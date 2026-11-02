@@ -72,7 +72,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .br{display:flex;align-items:center;gap:8px}.br input:not([type]){margin:0 0 8px}.br i{width:14px;height:14px;border-radius:50%;flex:none;margin-bottom:8px}
 .st{font-size:13px;color:var(--dim);margin:6px 0 12px}
 #dj{height:200px;font:12px monospace}
-#toast,#tip{position:fixed;left:50%;transform:translateX(-50%);padding:9px 16px;border-radius:999px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:30}
+#toast,#tip{position:fixed;white-space:pre-wrap;max-width:min(560px,92vw);word-break:break-all;left:50%;transform:translateX(-50%);padding:9px 16px;border-radius:999px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:30}
 #toast{top:calc(68px + env(safe-area-inset-top,0px))}
 #toast.on,#tip.on{opacity:1}
 #tip{transform:none}
@@ -261,13 +261,18 @@ const AU={el:null,id:null,ctx:null,an:null,buf:null,level:0,playing:false};
 const audioUrl=a=>/^(https?:|data:|blob:)/i.test(a)?a:a.replace(/\\/g,'/').split('/').map(encodeURIComponent).join('/');
 function stopAudio(){if(AU.el){AU.el.pause();try{URL.revokeObjectURL(AU.el.src)}catch(e){}}AU.el=null;AU.id=null;AU.playing=false;syncAud()}
 function syncAud(){const b=$('aplay');if(b)b.textContent=sel&&AU.id==sel.id&&AU.playing?'Пауза':'Играть'}
+async function diagAudio(m,e){const u=audioUrl(m.au),abs=new URL(u,location.href).href;let why='';
+ try{const r=await fetch(u,{method:'HEAD'});why=r.ok?'файл найден ('+(r.headers.get('content-type')||'?')+'), но браузер не может его воспроизвести: формат или кодек не поддерживается. Конвертируй в mp3 или m4a.':'файл не найден (HTTP '+r.status+')'}
+ catch(x){why='страница не может проверить файл (открыта как file://). Проверяю только адрес'}
+ const msg='«'+m.au+'»: '+why+'\nИскал здесь: '+abs+(e&&e.name?'\nОшибка: '+e.name:'');
+ console.warn(msg);toast(msg,12000)}
 async function toggleAudio(m){
  if(AU.id==m.id&&AU.el){if(AU.el.paused){await AU.el.play();AU.playing=true}else{AU.el.pause();AU.playing=false}syncAud();return}
  stopAudio();
  try{const u=audioUrl(m.au),same=new URL(u,location.href).origin===location.origin;
   const el=new Audio();el.src=u;el.loop=true;el.volume=+$('avol').value/100;
   try{if(!same||location.protocol=='file:')throw 0;const C=window.AudioContext||window.webkitAudioContext;AU.ctx=AU.ctx||new C();const sr=AU.ctx.createMediaElementSource(el),an=AU.ctx.createAnalyser();an.fftSize=256;sr.connect(an);an.connect(AU.ctx.destination);AU.an=an;AU.buf=null;if(AU.ctx.state=='suspended')AU.ctx.resume()}catch(e){AU.an=null}
-  AU.el=el;AU.id=m.id;AU.playing=true;await el.play();syncAud()}catch(e){AU.playing=false;toast('Не получилось воспроизвести «'+m.au+'». Файл должен лежать рядом со страницей, имя — точно как в map.json',5000)}}
+  AU.el=el;AU.id=m.id;AU.playing=true;await el.play();syncAud()}catch(e){AU.playing=false;diagAudio(m,e)}}
 function note(x,y,rr,c,ph,lv,sl){const u=rr*(1+(sl?.2:.1)*Math.sin(t0/(sl?150:230)+ph)+lv*(sl?.9:.5))*.62;g.save();g.translate(x,y+u*.08);g.shadowColor=c;g.shadowBlur=10+lv*24+(sl?14:0);g.fillStyle=g.strokeStyle='#fff';g.lineCap='round';
  g.beginPath();g.ellipse(-u*.34,u*.5,u*.36,u*.26,-.45,0,7);g.fill();g.lineWidth=u*.13;g.beginPath();g.moveTo(0,u*.42);g.lineTo(0,-u*.7);g.stroke();
  g.beginPath();g.moveTo(0,-u*.7);g.bezierCurveTo(u*.1,-u*.3,u*.65,-u*.35,u*.5,u*.15);g.stroke();g.restore()}
